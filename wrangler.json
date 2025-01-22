@@ -9,20 +9,46 @@
   "compatibility_date": "2025-01-09",
   "observability": {
     "enabled": true
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "cs-chatbot-db",
+      "database_id": "3d79f67b-49b0-4f05-9471-697f3fc2561f"
+    }
+  ],
+  "ai": {
+    "binding": "AI"
+  },
+  "vars": {
+    "MAGENTO_API_URL": "https://staging.vapewholesaleusa.com",
+    "PRODUCTION_MAGENTO_API_URL": "https://vapewholesaleusa.com",
+    "ZOHO_DESK_URL": "https://desk.zoho.com",
+    "ZOHO_ORG_ID": "729742506"
+  },
+  "vectorize": [
+    {
+      "binding": "VECTORIZE",
+      "index_name": "faq-embedding-index"
+    }
+  ],
+  "services": [
+    {
+      "binding": "ZOHO_OAUTH_WORKER",
+      "service": "zoho-oath-worker"
+    }
+  ]
   /**
    * Smart Placement
    * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
    */
   // "placement": { "mode": "smart" },
-
   /**
    * Bindings
    * Bindings allow your Worker to interact with resources on the Cloudflare Developer Platform, including
    * databases, object storage, AI inference, real-time communication and more.
    * https://developers.cloudflare.com/workers/runtime-apis/bindings/
    */
-
   /**
    * Environment Variables
    * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
@@ -32,13 +58,11 @@
    * Note: Use secrets to store sensitive data.
    * https://developers.cloudflare.com/workers/configuration/secrets/
    */
-
   /**
    * Static Assets
    * https://developers.cloudflare.com/workers/static-assets/binding/
    */
   // "assets": { "directory": "./public/", "binding": "ASSETS" },
-
   /**
    * Service Bindings (communicate between multiple Workers)
    * https://developers.cloudflare.com/workers/wrangler/configuration/#service-bindings
