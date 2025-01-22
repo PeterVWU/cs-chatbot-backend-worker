@@ -1,5 +1,5 @@
 // src/modules/message-generator.interface.ts
-import { Conversation, Intent } from "../../types";
+import { Conversation, Intent, StructuredResponse } from "../../types";
 import { OrderDetails } from "../magento/magento.interface";
 
 
@@ -18,5 +18,5 @@ export interface FAQResult {
 }
 
 export interface MessageGeneratorModule {
-    generateResponse(input: GenerateMessageInput): Promise<string>;
+    generateResponse(input: GenerateMessageInput): Promise<StructuredResponse>;
 }

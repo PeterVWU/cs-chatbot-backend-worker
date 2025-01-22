@@ -1,6 +1,6 @@
 // src/modules/chat-history/chat-history.module.ts
 import { ChatHistoryModule } from "./chat-history.interface"
-import { Conversation, Message } from '../../types';
+import { Conversation, Message, StructuredResponse } from '../../types';
 
 export class D1ChatHistoryModule implements ChatHistoryModule {
     constructor(private db: D1Database) { }
@@ -21,19 +21,26 @@ export class D1ChatHistoryModule implements ChatHistoryModule {
 
             // Get messages for the conversation
             const messages = await this.db.prepare(
-                `SELECT text, sender, timestamp
+                `SELECT structured_content , sender, timestamp
                     FROM messages
                     WHERE conversation_id = ?
                     ORDER BY timestamp ASC`
             )
                 .bind(conversationId)
-                .all<Message>();
+                .all<{ sender: 'user' | 'bot', structured_content: string, timestamp: number }>();
+
+            // Parse structured_content JSON for each message
+            const parsedMessages: Message[] = messages.results.map(msg => ({
+                sender: msg.sender,
+                structuredContent: JSON.parse(msg.structured_content) as StructuredResponse,
+                timestamp: msg.timestamp
+            }));
 
             return {
                 id: conversation.id,
                 status: conversation.status,
                 metadata: JSON.parse(conversation.metadata),
-                messages: messages.results
+                messages: parsedMessages
             }
         } catch (error) {
             console.error('Error retrieving conversation history:', error);
@@ -96,12 +103,12 @@ export class D1ChatHistoryModule implements ChatHistoryModule {
 
                 ...newMessages.map(message =>
                     this.db.prepare(
-                        `INSERT INTO messages (conversation_id, text, sender, timestamp)
+                        `INSERT INTO messages (conversation_id, structured_content, sender, timestamp)
                         VALUES (?, ?, ?, ?)`
                     )
                         .bind(
                             conversation.id,
-                            message.text,
+                            JSON.stringify(message.structuredContent),
                             message.sender,
                             message.timestamp
                         )

@@ -5,7 +5,7 @@ import type { MagentoModule } from "../magento";
 import type { MessageGeneratorModule } from "../message-generator";
 import type { MessageValidatorModule } from "../message-validator";
 import type { TicketModule } from "../ticket";
-import type { Intent } from "../../types";
+import type { Intent, StructuredResponse } from "../../types";
 
 export class OrchestrationModule {
   constructor(
@@ -19,7 +19,7 @@ export class OrchestrationModule {
   ) { }
 
   async processMessage(userMessage: string, conversationId?: string): Promise<{
-    response: string;
+    response: StructuredResponse;
     conversationId: string;
   }> {
     try {
@@ -34,7 +34,7 @@ export class OrchestrationModule {
 
       // Add user message to conversation
       conversation.messages.push({
-        text: userMessage,
+        structuredContent: { text: userMessage },
         sender: 'user',
         timestamp: Date.now(),
       });
@@ -85,15 +85,15 @@ export class OrchestrationModule {
       });
       console.log('Generated response:', response);
       // 5. Validate response
-      const validation = await this.messageValidator.validateResponse(response);
+      const validation = await this.messageValidator.validateResponse(response.text);
       if (!validation.isValid) {
         // Fallback response if validation fails
-        response = "I apologize, but I'm having trouble understanding your request. Could you please rephrase your question?";
+        response.text = "I apologize, but I'm having trouble understanding your request. Could you please rephrase your question?";
       }
 
       // 6. Add bot response to conversation
       conversation.messages.push({
-        text: response,
+        structuredContent: response,
         sender: 'bot',
         timestamp: Date.now(),
       });

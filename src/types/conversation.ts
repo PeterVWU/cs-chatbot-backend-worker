@@ -5,7 +5,7 @@ export interface ConversationMetadata {
 }
 
 export interface Message {
-    text: string;
+    structuredContent: StructuredResponse;
     sender: 'user' | 'bot';
     timestamp: number;
 }
@@ -15,4 +15,15 @@ export interface Conversation {
     messages: Message[];
     status: 'open' | 'closed' | 'ticket';
     metadata: ConversationMetadata;
+}
+
+export interface Link {
+    label: string;
+    url: string;
+    type: 'tracking' | 'faq' | 'other';
+}
+
+export interface StructuredResponse {
+    text: string;
+    links?: Link[];
 }
