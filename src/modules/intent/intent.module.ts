@@ -11,12 +11,12 @@ export class CSIntentModule implements IntentModule {
             const hasOrderNumber = this.containsOrderNumber(message);
 
             // If we already have an order number or one was just provided
-            if (hasOrderNumber) {
+            if (!conversation.metadata.orderNumber && hasOrderNumber) {
                 return 'get_order_data';
             }
 
             // Check if message is asking about an order
-            if (this.isOrderRelatedQuery(message)) {
+            if (!conversation.metadata.orderNumber && this.isOrderRelatedQuery(message)) {
                 return 'need_order_number';
             }
 
@@ -24,7 +24,6 @@ export class CSIntentModule implements IntentModule {
             const prompt = `Analyze the following customer service message and classify it into one of these categories:
 - close: if user wants to end the conversation
 - need_order_number: if conversation needs order number
-- get_order_data: if message contains or refers to order number
 - ticketing: if user wants to create a support ticket or escalate
 - general_inquiry: for general questions or default case
 
@@ -40,7 +39,7 @@ Classify as:`;
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are a customer service intent classifier. Respond only with one of these exact words: close, need_order_number, get_order_data, ticketing, or general_inquiry.'
+                        content: 'You are a customer service intent classifier. Respond only with one of these exact words: close, need_order_number, ticketing, or general_inquiry.'
                     },
                     {
                         role: 'user',
@@ -50,7 +49,7 @@ Classify as:`;
             })
             console.log(response);
             const predictedIntent = response.response.trim().toLowerCase() as Intent;
-            const validIntents: Intent[] = ['close', 'need_order_number', 'get_order_data', 'ticketing', 'general_inquiry'];
+            const validIntents: Intent[] = ['close', 'need_order_number', 'ticketing', 'general_inquiry'];
             if (!validIntents.includes(predictedIntent)) {
                 console.warn(`Invalid intent detected: ${predictedIntent}, falling back to general_inquiry`);
                 return 'general_inquiry'
