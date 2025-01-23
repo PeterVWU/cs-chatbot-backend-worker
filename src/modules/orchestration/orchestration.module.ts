@@ -49,6 +49,7 @@ export class OrchestrationModule {
           text: "I'm glad I could help! Is there anything else you need assistance with?"
         };
         intent = 'close';
+        conversation.status = 'helpful';
       } else if (userMessage.toLowerCase().includes('no, i need more help')) {
         response = {
           text: "I'm sorry the answer wasn't helpful. Could you please provide your email address so I can create a support ticket for you?"

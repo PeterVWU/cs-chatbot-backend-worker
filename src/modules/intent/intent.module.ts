@@ -20,6 +20,11 @@ export class CSIntentModule implements IntentModule {
                 return 'need_order_number';
             }
 
+            // conversation status is alreadyin ticket
+            if (conversation.status === 'ticket') {
+                return 'ticketing';
+            }
+
             // route to ticketing when conversation is geting too long.
             if (conversation.messages.length > 8) {
                 return 'ticketing';

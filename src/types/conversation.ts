@@ -15,7 +15,7 @@ export interface Message {
 export interface Conversation {
     id: string;
     messages: Message[];
-    status: 'open' | 'closed' | 'ticket';
+    status: 'open' | 'closed' | 'ticket' | 'helpful';
     metadata: ConversationMetadata;
 }
 
