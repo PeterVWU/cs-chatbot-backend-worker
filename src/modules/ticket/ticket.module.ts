@@ -55,10 +55,28 @@ export class CSTicketModule implements TicketModule {
     }
 
     private prepareTicketPayload(email: string, conversation: Conversation): ZohoTicketPayload {
-        // Get all messages from the conversation for context
+        // // Get all messages from the conversation for context
+        // const recentMessages = conversation.messages
+        //     .map(msg => `${msg.sender}: ${msg.structuredContent.text}`)
+        //     .join('\n');
+
+        // // Create subject from the first user message or a default
+        // const firstUserMessage = conversation.messages.find(msg => msg.sender === 'user')?.structuredContent.text;
+        // const subject = firstUserMessage ?
+        //     `${firstUserMessage.slice(0, 50)}${firstUserMessage.length > 50 ? '...' : ''}` :
+        //     'Customer Support Request';
+
+        // const orderContext = conversation.metadata.orderNumber ?
+        //     `\nOrder Number: ${conversation.metadata.orderNumber}` : '';
+
+        // Format messages with HTML line breaks and proper styling
         const recentMessages = conversation.messages
-            .map(msg => `${msg.sender}: ${msg.structuredContent.text}`)
-            .join('\n');
+            .map(msg => {
+                const sender = msg.sender === 'user' ? 'Customer' : 'Bot';
+                const text = msg.structuredContent.text.replace(/\n/g, '<br>');
+                return `<strong>${sender}:</strong> ${text}`;
+            })
+            .join('<br><br>');
 
         // Create subject from the first user message or a default
         const firstUserMessage = conversation.messages.find(msg => msg.sender === 'user')?.structuredContent.text;
@@ -66,15 +84,25 @@ export class CSTicketModule implements TicketModule {
             `${firstUserMessage.slice(0, 50)}${firstUserMessage.length > 50 ? '...' : ''}` :
             'Customer Support Request';
 
+        // Add order context with proper HTML formatting
         const orderContext = conversation.metadata.orderNumber ?
-            `\nOrder Number: ${conversation.metadata.orderNumber}` : '';
+            `<br><br><strong>Order Number:</strong> ${conversation.metadata.orderNumber}` : '';
+
+        // Construct the HTML-formatted description
+        const description = `
+        <h3>Chat Conversation History</h3>
+        <div style="margin-top: 10px;">
+            ${recentMessages}
+            ${orderContext}
+        </div>
+    `.trim();
 
         return {
             subject,
             email,
             departmentId: this.departmentId,
             contactId: this.contactId,
-            description: `Chat Conversation History:\n${recentMessages}${orderContext}`,
+            description: description,
             priority: 'Medium',
             status: 'Open',
             channel: 'Chat',

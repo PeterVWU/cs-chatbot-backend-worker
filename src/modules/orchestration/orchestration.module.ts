@@ -55,6 +55,7 @@ export class OrchestrationModule {
           text: "I'm sorry the answer wasn't helpful. Could you please provide your email address so I can create a support ticket for you?"
         };
         intent = 'ticketing';
+        conversation.status = 'ticket';
       } else {
         // 3. Process based on intent and enrich with data
         let additionalData: any = null;
