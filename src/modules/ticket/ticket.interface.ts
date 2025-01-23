@@ -14,6 +14,7 @@ export interface TicketMetadata {
 export interface ZohoTicketPayload {
     subject: string;
     departmentId: string;
+    contactId: string;
     email: string;
     description: string;
     priority: 'High' | 'Medium' | 'Low';

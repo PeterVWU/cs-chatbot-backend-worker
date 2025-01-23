@@ -32,6 +32,7 @@ export interface Env {
 	ZOHO_DESK_URL: string;
 	ZOHO_ORG_ID: string;
 	ZOHO_DEPARTMENT_ID: string;
+	ZOHO_CONTACT_ID: string;
 	ZOHO_OAUTH_WORKER: any;
 }
 

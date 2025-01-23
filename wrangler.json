@@ -21,7 +21,8 @@
     "PRODUCTION_MAGENTO_API_URL": "https://vapewholesaleusa.com",
     "ZOHO_DESK_URL": "https://desk.zoho.com",
     "ZOHO_ORG_ID": "729742506",
-    "ZOHO_DEPARTMENT_ID": "152404000000006907"
+    "ZOHO_DEPARTMENT_ID": "152404000000006907",
+    "ZOHO_CONTACT_ID": "152404000041249001"
   },
   "vectorize": [
     {

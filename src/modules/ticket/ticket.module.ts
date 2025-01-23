@@ -6,17 +6,20 @@ export class CSTicketModule implements TicketModule {
     private baseUrl: string;
     private orgId: string;
     private departmentId: string;
+    private contactId: string;
     private zohoOauthWorker: any;
 
     constructor(env: {
         ZOHO_DESK_URL: string;
         ZOHO_ORG_ID: string;
         ZOHO_DEPARTMENT_ID: string;
+        ZOHO_CONTACT_ID: string;
         ZOHO_OAUTH_WORKER: any;
     }) {
         this.baseUrl = env.ZOHO_DESK_URL;
         this.orgId = env.ZOHO_ORG_ID;
         this.departmentId = env.ZOHO_DEPARTMENT_ID;
+        this.contactId = env.ZOHO_CONTACT_ID;
         this.zohoOauthWorker = env.ZOHO_OAUTH_WORKER;
     }
     public async createTicket(email: string, conversation: Conversation): Promise<any> {
@@ -70,6 +73,7 @@ export class CSTicketModule implements TicketModule {
             subject,
             email,
             departmentId: this.departmentId,
+            contactId: this.contactId,
             description: `Chat Conversation History:\n${recentMessages}${orderContext}`,
             priority: 'Medium',
             status: 'Open',
