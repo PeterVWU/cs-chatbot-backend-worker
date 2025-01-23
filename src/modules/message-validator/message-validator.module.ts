@@ -13,9 +13,7 @@ export class CSMessageValidatorModule implements MessageValidatorModule {
                         Evaluate the response based on these criteria:
                         1. Professional and polite tone
                         2. Clear and concise communication
-                        3. No inappropriate content
                         4. Grammatically correct
-                        5. Contains actionable information when needed
                         
                         Respond with only "VALID" or "INVALID: [reason]"`
                     },

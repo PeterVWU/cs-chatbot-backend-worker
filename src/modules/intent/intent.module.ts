@@ -20,10 +20,14 @@ export class CSIntentModule implements IntentModule {
                 return 'need_order_number';
             }
 
+            // route to ticketing when conversation is geting too long.
+            if (conversation.messages.length > 8) {
+                return 'ticketing';
+            }
+
 
             const prompt = `Analyze the following customer service message and classify it into one of these categories:
 - close: if user wants to end the conversation
-- need_order_number: if conversation needs order number
 - ticketing: if user wants to create a support ticket or escalate
 - general_inquiry: for general questions or default case
 
@@ -39,7 +43,7 @@ Classify as:`;
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are a customer service intent classifier. Respond only with one of these exact words: close, need_order_number, ticketing, or general_inquiry.'
+                        content: 'You are a customer service intent classifier. Respond only with one of these exact words: close, ticketing, or general_inquiry.'
                     },
                     {
                         role: 'user',
@@ -98,6 +102,7 @@ Classify as:`;
             'arrive',
             'coming',
             'get',
+            'got',
             'deliver'
         ];
 

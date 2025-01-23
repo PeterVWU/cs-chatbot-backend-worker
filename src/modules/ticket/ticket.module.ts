@@ -51,11 +51,11 @@ export class CSTicketModule implements TicketModule {
     private prepareTicketPayload(email: string, conversation: Conversation): ZohoTicketPayload {
         // Get all messages from the conversation for context
         const recentMessages = conversation.messages
-            .map(msg => `${msg.sender}: ${msg.text}`)
+            .map(msg => `${msg.sender}: ${msg.structuredContent.text}`)
             .join('\n');
 
         // Create subject from the first user message or a default
-        const firstUserMessage = conversation.messages.find(msg => msg.sender === 'user')?.text;
+        const firstUserMessage = conversation.messages.find(msg => msg.sender === 'user')?.structuredContent.text;
         const subject = firstUserMessage ?
             `${firstUserMessage.slice(0, 50)}${firstUserMessage.length > 50 ? '...' : ''}` :
             'Customer Support Request';
