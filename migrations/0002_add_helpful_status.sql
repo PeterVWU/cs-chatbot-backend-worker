@@ -1,11 +1,8 @@
 -- Migration number: 0002 	 2025-01-23T21:53:40.335Z
--- Begin transaction
-BEGIN TRANSACTION;
-
 -- Disable foreign key constraints
 PRAGMA foreign_keys=OFF;
 
--- Create a temporary table for conversations with new schema
+-- Create new conversations table
 CREATE TABLE conversations_new (
     id TEXT PRIMARY KEY,
     status TEXT CHECK(status IN ('open', 'closed', 'ticket', 'helpful')) NOT NULL,
@@ -14,7 +11,7 @@ CREATE TABLE conversations_new (
     updated_at INTEGER NOT NULL
 );
 
--- Create a temporary table for messages
+-- Create new messages table
 CREATE TABLE messages_new (
     conversation_id TEXT NOT NULL,
     structured_content TEXT NOT NULL,
@@ -49,7 +46,7 @@ DROP TABLE conversations;
 ALTER TABLE conversations_new RENAME TO conversations;
 ALTER TABLE messages_new RENAME TO messages;
 
--- Recreate indexes
+-- Create indexes
 CREATE INDEX idx_conversations_status ON conversations(status);
 CREATE INDEX idx_conversations_created_at ON conversations(created_at);
 CREATE INDEX idx_messages_conversation_id ON messages(conversation_id);
@@ -58,8 +55,5 @@ CREATE INDEX idx_messages_timestamp ON messages(timestamp);
 -- Re-enable foreign key constraints
 PRAGMA foreign_keys=ON;
 
--- Commit transaction
-COMMIT;
-
--- Verify the migration
+-- Verify migration
 SELECT DISTINCT status FROM conversations ORDER BY status;
