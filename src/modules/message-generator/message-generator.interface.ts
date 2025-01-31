@@ -4,6 +4,7 @@ import { OrderDetails } from "../magento/magento.interface";
 
 
 export interface GenerateMessageInput {
+    userMessage: string;
     conversation: Conversation;
     intent: Intent;
     additionalData?: OrderDetails | FAQResult | null;

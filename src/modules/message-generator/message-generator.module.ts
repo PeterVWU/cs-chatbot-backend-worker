@@ -1,64 +1,126 @@
 // src/modules/message-generator/message-generator.module.ts
 import { OrderDetails } from "../magento/magento.interface";
 import { MessageGeneratorModule, GenerateMessageInput, FAQResult } from "./message-generator.interface";
-import { StructuredResponse, Link } from "../../types/conversation";
+import { StructuredResponse, Link, Conversation, OrderIntent, Action } from "../../types";
 
 export class CSMessageGeneratorModule implements MessageGeneratorModule {
+    constructor(private ai: Ai) { }
     async generateResponse(input: GenerateMessageInput): Promise<StructuredResponse> {
-        const { intent, additionalData, conversation } = input;
+        const { userMessage, intent, additionalData, conversation } = input;
 
         switch (intent) {
-            case 'get_order_data':
-                return this.generateOrderResponse(additionalData as OrderDetails);
+            case 'order':
+                return await this.handleOrderIntent(userMessage, conversation, additionalData as OrderDetails);
 
-            case 'general_inquiry':
+            case 'other':
                 return this.generateFAQResponse(additionalData as FAQResult);
-
-            case 'need_order_number':
-                return { text: "To assist you better, could you please provide your order number?" };
 
             case 'ticketing':
                 return this.generateTicketResponse(conversation.metadata.email);
 
-            case 'close':
-                return { text: "Thank you for contacting us. Is there anything else you need help with?" };
+            // case 'close':
+            //     return { text: "Thank you for contacting us. Is there anything else you need help with?" };
 
             default:
                 return { text: "I apologize, but I'm having trouble understanding. Could you please rephrase your question?" };
         }
     }
 
-    private generateOrderResponse(orderDetails: OrderDetails | null): StructuredResponse {
+    private async handleOrderIntent(userMessage: string, conversation: Conversation, additionalData: OrderDetails): Promise<StructuredResponse> {
+        try {
+            if (!additionalData && !conversation.metadata.orderNumber) {
+                return { text: "To assist you better, could you please provide your order number?" }
+            } else {
+                return this.generateOrderResponse(userMessage, conversation, additionalData);
+            }
+        } catch (error) {
+            console.error(error);
+            return { text: "I apologize, but I'm having trouble understanding. Could you please rephrase your question?" };
+        }
+    }
+
+    private async generateOrderResponse(userMessage: string, conversation: Conversation, orderDetails: OrderDetails): Promise<StructuredResponse> {
         if (!orderDetails) {
-            return { text: "I couldn't find that order. Please verify your order number and try again." };
+            return { text: "Our system is not showing your order." };
         }
 
         const { status, orderNumber, shipping } = orderDetails;
 
-        const statusMessage = this.getStatusMessage(status);
-        const baseText = `I found your order #${orderNumber}. ${statusMessage}`;
-
-
-        if (!shipping.tracking || shipping.tracking.length === 0) {
-            return {
-                text: `${baseText}\n\nTracking information will be available once your order ships.`
-            };
+        const orderIntent: OrderIntent = await this.orderIntent(userMessage, conversation);
+        let baseText: string = '';
+        let links: Link[] = [];
+        let action: Action | null = null;
+        switch (orderIntent) {
+            case 'status':
+            case 'tracking':
+                const statusMessage = this.getStatusMessage(status);
+                baseText = `I found your order #${orderNumber}. ${statusMessage}`;
+                if (!shipping.tracking || shipping.tracking.length === 0) {
+                    baseText = `${baseText}\n\nOur system is not showing tracking information for your order. It typically takes up to 48 hours from the time you initially place your order for tracking information to appear.`
+                } else {
+                    links = this.createTrackingLinks(orderDetails)
+                    action = { type: 'feedback' }
+                }
+                break;
+            case 'cancel':
+            case 'return':
+                baseText = `Sorry I can't ${orderIntent} order, 
+                            but I can create a support ticket for you, 
+                            and one of our customer service agant will help you ${orderIntent} the order.
+                            \n\n Would you like to create a ticket`
+                action = { type: 'ticket' }
+                break;
+            case 'other':
+                baseText = "I apologize, but I'm having trouble understanding. Could you please rephrase your question?"
         }
 
-        // Create tracking links
-        const links: Link[] = shipping.tracking.map(t => {
+        return {
+            text: baseText,
+            links,
+            action,
+        };
+    }
+
+    private createTrackingLinks(orderDetails: OrderDetails): Link[] {
+        return orderDetails?.shipping?.tracking?.map(t => {
             const carrierInfo = this.getCarrierTrackingLink(t.carrier, t.number);
             return {
                 label: `Track with ${carrierInfo.name}`,
                 url: carrierInfo.url,
                 type: 'tracking'
             };
-        });
+        }) || [];
+    }
 
-        return {
-            text: baseText,
-            links
-        };
+    private async orderIntent(userMessage: string, conversation: Conversation): Promise<OrderIntent> {
+        const prompt = `Analyze the following customer service message and classify it into one of these order related categories:
+- status: Inquiries about order status
+- return: Inquiries about order return
+- cancel: Inquiries about order cancellation
+- tracking: Inquiries about order tracking
+
+conversation history: ${conversation.messages.map(message => message.structuredContent).join('\n')}
+User message: "${userMessage}"`;
+        const response: any = await this.ai.run('@cf/meta/llama-2-7b-chat-int8', {
+            messages: [
+                {
+                    role: 'system',
+                    content: 'You are a order inquery classifier. Respond only with one of these exact words: status, return, cancel, tracking.'
+                },
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ]
+        })
+        console.log(response);
+        const predictedIntent = response.response.trim().toLowerCase();
+        const validIntents: OrderIntent[] = ['status', 'return', 'cancel', 'tracking'];
+        if (!validIntents.includes(predictedIntent)) {
+            console.warn(`Invalid order intent: ${predictedIntent}, falling back to status`);
+            return 'status'
+        }
+        return predictedIntent
     }
 
     private getStatusMessage(status: string): string {

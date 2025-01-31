@@ -43,7 +43,7 @@ export default class CSBackendWorker extends WorkerEntrypoint {
 		const faq = new CSFaqModule(env.AI, env.VECTORIZE);
 		const intent = new CSIntentModule(env.AI);
 		const magento = new CSMagentoModule(env);
-		const messageGenerator = new CSMessageGeneratorModule();
+		const messageGenerator = new CSMessageGeneratorModule(env.AI);
 		const messageValidator = new CSMessageValidatorModule(env.AI);
 		const ticket = new CSTicketModule(env);
 		const faqEmbedder = new CSFAQEmbedderModule(env.AI, env.VECTORIZE);
@@ -91,7 +91,7 @@ export default class CSBackendWorker extends WorkerEntrypoint {
 		const faq = new CSFaqModule(env.AI, env.VECTORIZE);
 		const intent = new CSIntentModule(env.AI);
 		const magento = new CSMagentoModule(env);
-		const messageGenerator = new CSMessageGeneratorModule();
+		const messageGenerator = new CSMessageGeneratorModule(env.AI);
 		const messageValidator = new CSMessageValidatorModule(env.AI);
 		const ticket = new CSTicketModule(env);
 		const faqEmbedder = new CSFAQEmbedderModule(env.AI, env.VECTORIZE);

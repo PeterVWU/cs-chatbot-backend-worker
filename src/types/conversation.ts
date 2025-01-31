@@ -28,4 +28,9 @@ export interface Link {
 export interface StructuredResponse {
     text: string;
     links?: Link[];
+    action?: Action | null;
+}
+
+export interface Action {
+    type: 'feedback' | 'ticket' | 'other';
 }

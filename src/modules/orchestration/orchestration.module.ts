@@ -39,29 +39,34 @@ export class OrchestrationModule {
         sender: 'user',
         timestamp: Date.now(),
       });
-
+      // test order number 000141624
       // 2. Detect intent
       let intent: Intent = await this.intent.detectIntent(userMessage, conversation);
       let response: StructuredResponse
-
-      if (userMessage.toLowerCase().includes('yes, the answer was helpful')) {
+      console.log('userMessage', userMessage)
+      console.log('include', userMessage === "TICKET_CREATE")
+      if (userMessage === "FEEDBACK_HELPFUL") {
         response = {
           text: "I'm glad I could help! Is there anything else you need assistance with?"
         };
-        intent = 'close';
         conversation.status = 'helpful';
-      } else if (userMessage.toLowerCase().includes('no, i need more help')) {
+      } else if (userMessage === "FEEDBACK_UNHELPFUL") {
         response = {
           text: "I'm sorry the answer wasn't helpful. Could you please provide your email address so I can create a support ticket for you?"
+        };
+        intent = 'ticketing';
+        conversation.status = 'ticket';
+      } else if (userMessage === "TICKET_CREATE") {
+        response = {
+          text: "Could you please provide your email address so I can create a support ticket for you?"
         };
         intent = 'ticketing';
         conversation.status = 'ticket';
       } else {
         // 3. Process based on intent and enrich with data
         let additionalData: any = null;
-
         switch (intent) {
-          case 'get_order_data':
+          case 'order':
             const orderNumber = this.extractOrderNumber(userMessage) || conversation.metadata.orderNumber;
             if (orderNumber) {
               additionalData = await this.magento.getOrderDetails(orderNumber);
@@ -69,7 +74,7 @@ export class OrchestrationModule {
             }
             break;
 
-          case 'general_inquiry':
+          case 'other':
             additionalData = await this.faq.searchFAQ(userMessage);
             break;
 
@@ -86,14 +91,11 @@ export class OrchestrationModule {
               conversation.status = 'ticket';
             }
             break;
-
-          case 'close':
-            conversation.status = 'closed';
-            break;
         }
 
         // 4. Generate response
         response = await this.messageGenerator.generateResponse({
+          userMessage,
           conversation,
           intent,
           additionalData,
@@ -109,8 +111,7 @@ export class OrchestrationModule {
         console.log('reason', validation.reason)
         // Fallback response if validation fails
         response.text = "I apologize, but I'm having trouble understanding your request. Could you please rephrase your question?";
-
-        intent = 'general_inquiry';
+        intent = 'other';
       }
 
       // 6. Add bot response to conversation

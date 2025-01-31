@@ -1,7 +1,17 @@
 // src/types/intent.ts
 export type Intent =
-    | 'close'             // End conversation
-    | 'need_order_number'  // Need order number
-    | 'get_order_data'    // Contains/refers to order details
-    | 'ticketing'         // Create support ticket/escalate
-    | 'general_inquiry';  // Default/general questions
+    | 'order'             // order related
+    // | 'product'           // product related
+    // | 'payment'           // payment related
+    // | 'shipping'          // shipping related
+    // | 'return'            // return related
+    // | 'cancel'            // cancel related
+    | 'other'             // other related
+    | 'ticketing'
+
+export type OrderIntent =
+    | 'status'
+    | 'tracking'
+    | 'return'
+    | 'cancel'
+    | 'other'

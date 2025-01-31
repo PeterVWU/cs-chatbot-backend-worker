@@ -1,7 +1,7 @@
 -- Create conversations table
 CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY,
-    status TEXT CHECK (status IN ('open', 'closed', 'ticket')) NOT NULL DEFAULT 'open',
+    status TEXT CHECK (status IN ('open', 'closed', 'ticket','helpful')) NOT NULL DEFAULT 'open',
     metadata TEXT NOT NULL DEFAULT '{}',
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL
