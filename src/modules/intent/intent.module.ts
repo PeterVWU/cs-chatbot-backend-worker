@@ -15,11 +15,6 @@ export class CSIntentModule implements IntentModule {
                 return 'order';
             }
 
-            // Check if message is asking about an order
-            // if (!conversation.metadata.orderNumber && this.isOrderRelatedQuery(message)) {
-            //     return 'need_order_number';
-            // }
-
             // conversation status is alreadyin ticket
             if (conversation.status === 'ticket') {
                 return 'ticketing';

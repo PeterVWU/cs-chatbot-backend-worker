@@ -25,115 +25,181 @@ export class OrchestrationModule {
   }> {
     try {
       // 1. Get or create conversation history
-      let conversation = conversationId
-        ? await this.chatHistory.getHistory(conversationId)
-        : null;
+      let conversation = await this.getOrCreateConversation(conversationId);
 
-      if (!conversation) {
-        conversation = await this.chatHistory.createConversation();
-      }
+      // 2. Add the user message to the conversation
+      this.recordUserMessage(conversation, userMessage);
 
-      // Add user message to conversation
-      conversation.messages.push({
-        structuredContent: { text: userMessage },
-        sender: 'user',
-        timestamp: Date.now(),
-      });
       // test order number 000141624
-      // 2. Detect intent
-      let intent: Intent = await this.intent.detectIntent(userMessage, conversation);
-      let response: StructuredResponse
+      // 3. Detect intent (base on conversation & user message)
+      let detectedIntent: Intent = await this.intent.detectIntent(userMessage, conversation);
       console.log('userMessage', userMessage)
-      console.log('include', userMessage === "TICKET_CREATE")
-      if (userMessage === "FEEDBACK_HELPFUL") {
-        response = {
-          text: "I'm glad I could help! Is there anything else you need assistance with?"
-        };
-        conversation.status = 'helpful';
-      } else if (userMessage === "FEEDBACK_UNHELPFUL") {
-        response = {
-          text: "I'm sorry the answer wasn't helpful. Could you please provide your email address so I can create a support ticket for you?"
-        };
-        intent = 'ticketing';
-        conversation.status = 'ticket';
-      } else if (userMessage === "TICKET_CREATE") {
-        response = {
-          text: "Could you please provide your email address so I can create a support ticket for you?"
-        };
-        intent = 'ticketing';
-        conversation.status = 'ticket';
+
+      // 4. Check and early-return if message is a standard feedback type
+      const feedbackResult = await this.handleFeedback(userMessage, conversation, detectedIntent);
+      let response: StructuredResponse
+      if (feedbackResult) {
+        response = feedbackResult.response;
+        detectedIntent = feedbackResult.intent;
       } else {
-        // 3. Process based on intent and enrich with data
-        let additionalData: any = null;
-        switch (intent) {
-          case 'order':
-            const orderNumber = this.extractOrderNumber(userMessage) || conversation.metadata.orderNumber;
-            if (orderNumber) {
-              additionalData = await this.magento.getOrderDetails(orderNumber);
-              conversation.metadata.orderNumber = orderNumber;
-            }
-            break;
-
-          case 'other':
-            additionalData = await this.faq.searchFAQ(userMessage);
-            break;
-
-          case 'ticketing':
-            if (this.ticket.needsEmail(conversation)) {
-              const email = this.extractEmail(userMessage);
-              if (email) {
-                conversation.metadata.email = email;
-                await this.ticket.createTicket(email, conversation);
-                conversation.status = 'ticket';
-              }
-            } else if (conversation.metadata.email) {
-              await this.ticket.createTicket(conversation.metadata.email, conversation);
-              conversation.status = 'ticket';
-            }
-            break;
-        }
-
-        // 4. Generate response
+        // 5. Process message based on intent (data enrichment, ticketing, etc)
+        const additionalData = await this.processIntent(userMessage, conversation, detectedIntent);
+        // 6. Generate response
         response = await this.messageGenerator.generateResponse({
           userMessage,
           conversation,
-          intent,
+          intent: detectedIntent,
           additionalData,
         });
 
       }
-
-
       console.log('Generated response:', response);
-      // 5. Validate response
-      const validation = await this.messageValidator.validateResponse(response.text);
-      if (!validation.isValid) {
-        console.log('reason', validation.reason)
-        // Fallback response if validation fails
-        response.text = "I apologize, but I'm having trouble understanding your request. Could you please rephrase your question?";
-        intent = 'other';
-      }
 
-      // 6. Add bot response to conversation
-      conversation.messages.push({
-        structuredContent: response,
-        sender: 'bot',
-        timestamp: Date.now(),
-      });
+      // 7. Validate the generated response and fallback if needed
+      const { response: validatedResponse, intent: finalIntent } = await this.validateAndFallback(response, detectedIntent);
+      // 8. Add bot response
+      this.sendBotMessage(conversation, validatedResponse);
 
-      // 7. Save updated conversation
+      // 9. Save conversation
       await this.chatHistory.saveConversation(conversation);
 
       return {
         response,
         conversationId: conversation.id,
-        intent
+        intent: finalIntent,
       };
     } catch (error) {
       console.error('Error in orchestration:', error);
       throw new Error('Failed to process message');
     }
   }
+
+  private async getOrCreateConversation(conversationId?: string) {
+    let conversation = conversationId
+      ? await this.chatHistory.getHistory(conversationId)
+      : null;
+
+    if (!conversation) {
+      conversation = await this.chatHistory.createConversation();
+    }
+    return conversation
+  }
+
+  private recordUserMessage(conversation: any, userMessage: string): void {
+    conversation.messages.push({
+      structuredContent: { text: userMessage },
+      sender: "user",
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+ * Checks if the user message is a feedback response or a trigger for ticket creation.
+ * Returns the corresponding response and intent if applicable; otherwise null.
+ */
+  private async handleFeedback(
+    userMessage: string,
+    conversation: any,
+    currentIntent: Intent
+  ): Promise<{ response: StructuredResponse; intent: Intent } | null> {
+    if (userMessage === "FEEDBACK_HELPFUL") {
+      conversation.status = "helpful";
+      return {
+        response: {
+          text: "I'm glad I could help! Is there anything else you need assistance with?",
+        },
+        intent: currentIntent,
+      };
+    } else if (userMessage === "FEEDBACK_UNHELPFUL") {
+      conversation.status = "ticket";
+      return {
+        response: {
+          text: "I'm sorry the answer wasn't helpful. Could you please provide your email address so I can create a support ticket for you?",
+        },
+        intent: "ticketing",
+      };
+    } else if (userMessage === "TICKET_CREATE") {
+      conversation.status = "ticket";
+      return {
+        response: {
+          text: "Could you please provide your email address so I can create a support ticket for you?",
+        },
+        intent: "ticketing",
+      };
+    }
+    return null;
+  }
+
+  /**
+   * Processes the intent-specific logic.
+   * - For 'order' intent, resolves the order number and enriches with order details.
+   * - For 'other' intent, uses FAQ search.
+   * - For 'ticketing', ensures an email exists and creates ticket if possible.
+   */
+  private async processIntent(
+    userMessage: string,
+    conversation: any,
+    intent: Intent
+  ): Promise<any> {
+    let additionalData: any = null;
+    switch (intent) {
+      case "order": {
+        const orderNumber = this.extractOrderNumber(userMessage) || conversation.metadata.orderNumber;
+        if (orderNumber) {
+          additionalData = await this.magento.getOrderDetails(orderNumber);
+          conversation.metadata.orderNumber = orderNumber;
+        }
+        break;
+      }
+      case "other": {
+        additionalData = await this.faq.searchFAQ(userMessage);
+        break;
+      }
+      case "ticketing": {
+        if (this.ticket.needsEmail(conversation)) {
+          const email = this.extractEmail(userMessage);
+          if (email) {
+            conversation.metadata.email = email;
+            await this.ticket.createTicket(email, conversation);
+            conversation.status = "ticket";
+          }
+        } else if (conversation.metadata.email) {
+          await this.ticket.createTicket(conversation.metadata.email, conversation);
+          conversation.status = "ticket";
+        }
+        break;
+      }
+    }
+    return additionalData;
+  }
+  /**
+   * Validates the generated response. If validation fails, returns a fallback response.
+   */
+  private async validateAndFallback(
+    response: StructuredResponse,
+    intent: Intent
+  ): Promise<{ response: StructuredResponse; intent: Intent }> {
+    const validation = await this.messageValidator.validateResponse(response.text);
+    if (!validation.isValid) {
+      console.log("Validation failed:", validation.reason);
+      return {
+        response: {
+          text: "I apologize, but I'm having trouble understanding your request. Could you please rephrase your question?",
+        },
+        intent: "other",
+      };
+    }
+    return { response, intent };
+  }
+
+  private sendBotMessage(conversation: any, response: StructuredResponse): void {
+    conversation.messages.push({
+      structuredContent: response,
+      sender: "bot",
+      timestamp: Date.now(),
+    });
+  }
+
 
   private extractEmail(text: string): string | null {
     const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
