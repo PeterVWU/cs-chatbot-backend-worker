@@ -10,6 +10,7 @@ The **CS Chatbot Backend Worker** is a serverless backend solution built with Cl
 - **Vectorize Service:** Supports FAQ embedding and search.
 - **Worker AI:** Use llama-2-7b for intents detection and text generation. 
 
+Visit the [cs-chatbot-frontend-page](https://github.com/PeterVWU/cs-chatbot-frontend-page) for the frontend implantation that consumes this worker
 ## Key Features
 
 - **Conversational Orchestration:**  
@@ -95,7 +96,7 @@ The orchestration module is at the heart of the solution. It manages conversatio
    npm install
    ```
 
-3. **Setup local envirment variables:**
+3. **Setup local environment variables:**
 
     create `.dev.vars` file in the root directy, and add the magento token
     ```bash
