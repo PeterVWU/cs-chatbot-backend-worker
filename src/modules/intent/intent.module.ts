@@ -6,57 +6,81 @@ export class CSIntentModule implements IntentModule {
     constructor(private ai: Ai) { }
     async detectIntent(message: string, conversation: Conversation): Promise<Intent> {
         try {
+            // Optionally, if the message contains an order number we can directly assume it is order related.
+            let isOrderRelated = false;
+            if (this.containsOrderNumber(message)) {
+                isOrderRelated = true;
+                console.log("Order number detected – treating message as order related.");
+                return "status"
+            } else {
+                // Step 1: Use LLM to determine if the inquiry is order related.
+                const orderRelatedPrompt = `Based on the conversation history and the user message below, determine if the inquiry is order related.
 
-            // First check for order number in the message
-            const hasOrderNumber = this.containsOrderNumber(message);
+Conversation history:
+${conversation.messages.map(m => m.structuredContent).join('\n')}
 
-            // If we already have an order number or one was just provided
-            if (!conversation.metadata.orderNumber && hasOrderNumber) {
-                return 'order';
+User message: "${message}"
+
+Answer only with "yes" or "no".`;
+
+                const orderRelatedResponse: any = await this.ai.run('@cf/meta/llama-2-7b-chat-int8', {
+                    messages: [
+                        {
+                            role: 'system',
+                            content: 'You are a customer service assistant. Answer only with "yes" or "no".'
+                        },
+                        {
+                            role: 'user',
+                            content: orderRelatedPrompt
+                        }
+                    ]
+                });
+
+                const answer = orderRelatedResponse.response.trim().toLowerCase();
+                console.log("LLM order-related check answer:", answer);
+                isOrderRelated = answer === 'yes';
             }
 
-            // conversation status is alreadyin ticket
-            if (conversation.status === 'ticket') {
-                return 'ticketing';
+            // If the message is not order related, simply return "other".
+            if (!isOrderRelated) {
+                return 'other';
             }
 
-            // route to ticketing when conversation is geting too long.
-            if (conversation.messages.length > 10) {
-                return 'ticketing';
-            }
+            // Step 2: If order related, use LLM to identify the specific type of order request.
+            const orderTypePrompt = `Analyze the following customer service message and determine the specific type of order request.
+Possible types include: status, tracking, cancel, refund, return.
+If the request does not clearly match one of these, answer with "other".
 
+Conversation history:
+${conversation.messages.map(m => m.structuredContent).join('\n')}
 
-            const prompt = `Analyze the following customer service message and classify it into one of these categories:
-- order: Inquiries about the current status of an order, delivery tracking
-- other: all other inquiries
-
-conversation history: ${conversation.messages.map(message => message.structuredContent).join('\n')}
 User message: "${message}"`;
 
-
-            const response: any = await this.ai.run('@cf/meta/llama-2-7b-chat-int8', {
+            const orderTypeResponse: any = await this.ai.run('@cf/meta/llama-2-7b-chat-int8', {
                 messages: [
                     {
                         role: 'system',
-                        content: 'You are a customer service intent classifier. Respond only with one of these exact words: order, other.'
+                        content: 'You are a customer service order classification assistant. Respond only with one of these exact words: status, tracking, cancel, refund, return, other.'
                     },
                     {
                         role: 'user',
-                        content: prompt
+                        content: orderTypePrompt
                     }
                 ]
-            })
-            console.log(response);
-            const predictedIntent = response.response.trim().toLowerCase() as Intent;
-            const validIntents: Intent[] = ['order', 'other'];
-            if (!validIntents.includes(predictedIntent)) {
-                console.warn(`Invalid intent detected: ${predictedIntent}, falling back to other`);
-                return 'other'
+            });
+
+            const detailedIntent = orderTypeResponse.response.trim().toLowerCase();
+            console.log("LLM order type classification:", detailedIntent);
+            const validOrderTypes = ['status', 'tracking', 'cancel', 'refund', 'return'];
+            if (validOrderTypes.includes(detailedIntent)) {
+                return detailedIntent as Intent;
+            } else {
+                console.warn(`LLM returned an unrecognized order type: ${detailedIntent}. Defaulting to "other".`);
+                return 'other';
             }
-            return predictedIntent
         } catch (error) {
             console.error('Error detecting intent:', error);
-            return 'other'
+            return 'other';
         }
     }
 

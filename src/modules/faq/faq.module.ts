@@ -16,7 +16,9 @@ export class CSFaqModule implements FaqModule {
                 returnValues: true,
                 returnMetadata: "all"
             });
-
+            searchResults.matches.forEach((match) => {
+                console.log('match', match)
+            })
             if (!searchResults.matches.length) {
                 return null;
             }

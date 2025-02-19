@@ -1,7 +1,7 @@
 // src/modules/message-generator/message-generator.module.ts
 import { OrderDetails } from "../magento/magento.interface";
 import { MessageGeneratorModule, GenerateMessageInput, FAQResult } from "./message-generator.interface";
-import { StructuredResponse, Link, Conversation, OrderIntent, Action } from "../../types";
+import { StructuredResponse, Link, Conversation, OrderIntent, Action, Intent } from "../../types";
 
 export class CSMessageGeneratorModule implements MessageGeneratorModule {
     constructor(private ai: Ai) { }
@@ -9,8 +9,12 @@ export class CSMessageGeneratorModule implements MessageGeneratorModule {
         const { userMessage, intent, additionalData, conversation } = input;
 
         switch (intent) {
-            case 'order':
-                return await this.handleOrderIntent(userMessage, conversation, additionalData as OrderDetails);
+            case "status":
+            case "tracking":
+            case "return":
+            case "cancel":
+            case "refund":
+                return await this.handleOrderIntent(userMessage, conversation, additionalData as OrderDetails, intent);
 
             case 'other':
                 return this.generateFAQResponse(additionalData as FAQResult);
@@ -26,12 +30,12 @@ export class CSMessageGeneratorModule implements MessageGeneratorModule {
         }
     }
 
-    private async handleOrderIntent(userMessage: string, conversation: Conversation, additionalData: OrderDetails): Promise<StructuredResponse> {
+    private async handleOrderIntent(userMessage: string, conversation: Conversation, additionalData: OrderDetails, intent: Intent): Promise<StructuredResponse> {
         try {
             if (!additionalData && !conversation.metadata.orderNumber) {
                 return { text: "To assist you better, could you please provide your order number?" }
             } else {
-                return this.generateOrderResponse(userMessage, conversation, additionalData);
+                return this.generateOrderResponse(userMessage, conversation, additionalData, intent);
             }
         } catch (error) {
             console.error(error);
@@ -39,18 +43,17 @@ export class CSMessageGeneratorModule implements MessageGeneratorModule {
         }
     }
 
-    private async generateOrderResponse(userMessage: string, conversation: Conversation, orderDetails: OrderDetails): Promise<StructuredResponse> {
+    private async generateOrderResponse(userMessage: string, conversation: Conversation, orderDetails: OrderDetails, intent: Intent): Promise<StructuredResponse> {
         if (!orderDetails) {
             return { text: "Our system is not showing your order." };
         }
 
         const { status, orderNumber, shipping } = orderDetails;
 
-        const orderIntent: OrderIntent = await this.orderIntent(userMessage, conversation);
         let baseText: string = '';
         let links: Link[] = [];
         let action: Action | null = null;
-        switch (orderIntent) {
+        switch (intent) {
             case 'status':
             case 'tracking':
                 const statusMessage = this.getStatusMessage(status);
@@ -63,10 +66,11 @@ export class CSMessageGeneratorModule implements MessageGeneratorModule {
                 }
                 break;
             case 'cancel':
+            case 'refund':
             case 'return':
-                baseText = `Sorry I can't ${orderIntent} order, 
+                baseText = `Sorry I can't ${intent} order, 
                             but I can create a support ticket for you, 
-                            and one of our customer service agant will help you ${orderIntent} the order.
+                            and one of our customer service agant will help you ${intent} the order.
                             \n\n Would you like to create a ticket`
                 action = { type: 'ticket' }
                 break;
@@ -165,7 +169,7 @@ User message: "${userMessage}"`;
     }
 
     private generateFAQResponse(faqResult: FAQResult | null): StructuredResponse {
-        if (!faqResult) {
+        if (!faqResult || faqResult.confidence < 0.6) {
             return {
                 text: "I apologize, but I couldn't find a specific answer to your question. Would you like me to create a support ticket for further assistance?"
             };

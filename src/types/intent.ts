@@ -1,6 +1,10 @@
 // src/types/intent.ts
 export type Intent =
-    | 'order'             // order related
+    | 'status' // order related
+    | 'tracking' // order related
+    | 'return' // order related
+    | 'cancel' // order related
+    | 'refund' // order related
     // | 'product'           // product related
     // | 'payment'           // payment related
     // | 'shipping'          // shipping related

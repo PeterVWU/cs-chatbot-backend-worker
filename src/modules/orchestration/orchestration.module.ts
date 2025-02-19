@@ -64,7 +64,7 @@ export class OrchestrationModule {
       await this.chatHistory.saveConversation(conversation);
 
       return {
-        response,
+        response: validatedResponse,
         conversationId: conversation.id,
         intent: finalIntent,
       };
@@ -143,7 +143,12 @@ export class OrchestrationModule {
   ): Promise<any> {
     let additionalData: any = null;
     switch (intent) {
-      case "order": {
+      case "status":
+      case "tracking":
+      case "return":
+      case "cancel":
+      case "refund": {
+        // order related intent
         const orderNumber = this.extractOrderNumber(userMessage) || conversation.metadata.orderNumber;
         if (orderNumber) {
           additionalData = await this.magento.getOrderDetails(orderNumber);
@@ -193,6 +198,7 @@ export class OrchestrationModule {
   }
 
   private sendBotMessage(conversation: any, response: StructuredResponse): void {
+    console.log('sendBotMessage', response)
     conversation.messages.push({
       structuredContent: response,
       sender: "bot",
