@@ -41,9 +41,9 @@ Answer only with "yes" or "no".`;
                 isOrderRelated = answer === 'yes';
             }
 
-            // If the message is not order related, simply return "other".
+            // If the message is not order related, simply return "other" or "ticketing".
             if (!isOrderRelated) {
-                return 'other';
+                return this.containsEmail(message) ? 'ticketing' : 'other'
             }
 
             // Step 2: If order related, use LLM to identify the specific type of order request.
@@ -88,6 +88,11 @@ User message: "${message}"`;
         // This regex should match your order number format
         const orderRegex = /#?(\d{6,})/;
         return orderRegex.test(text);
+    }
+
+    private containsEmail(text: string): boolean {
+        const emailRegex = /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/;
+        return emailRegex.test(text);
     }
 
 }
